@@ -220,7 +220,19 @@ export const useChatsStore = defineStore("chats", () => {
       createdAt: Date.now(),
     };
     messages.value = [...messages.value, user];
-    await db.putMessage(user);
+
+    // Report a failed save on the message instead of rejecting: an exception
+    // here escapes to ChatView's uncaught handler, which would abandon the turn
+    // with nothing on screen. The turn still runs — an unsaved history is worth
+    // less than a dead composer.
+    try {
+      await db.putMessage(user);
+    } catch (error) {
+      const live = messages.value[messages.value.length - 1];
+      live.error = `Couldn't save this message: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+    }
 
     // Name the chat from its opening message rather than leaving "New chat".
     if (chat.title === "New chat" && trimmed) {

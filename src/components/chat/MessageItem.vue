@@ -151,15 +151,17 @@ async function copy() {
             <span class="size-1.5 animate-bounce rounded-full bg-current [animation-delay:150ms]" />
             <span class="size-1.5 animate-bounce rounded-full bg-current [animation-delay:300ms]" />
           </div>
-
-          <div
-            v-if="message.error"
-            class="mt-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm"
-          >
-            <AlertTriangle class="mt-0.5 size-4 shrink-0 text-destructive" />
-            <span>{{ message.error }}</span>
-          </div>
         </template>
+
+        <!-- Outside the assistant branch: a user message can fail to save, and
+             that used to surface nowhere but the console. -->
+        <div
+          v-if="message.error"
+          class="mt-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm"
+        >
+          <AlertTriangle class="mt-0.5 size-4 shrink-0 text-destructive" />
+          <span>{{ message.error }}</span>
+        </div>
       </template>
 
       <!-- Action row: hidden until hover, and suppressed while streaming. -->

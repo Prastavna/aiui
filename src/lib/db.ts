@@ -1,4 +1,5 @@
 import { type DBSchema, type IDBPDatabase, openDB } from "idb";
+import { toRaw } from "vue";
 import type { Chat, Message } from "./types";
 
 /**
@@ -21,6 +22,35 @@ interface AiuiDB extends DBSchema {
 
 const DB_NAME = "aiui";
 const DB_VERSION = 1;
+
+/**
+ * IndexedDB structured-clones everything it stores, and a Vue reactive proxy
+ * is not cloneable — put() rejects with DataCloneError and takes the calling
+ * turn down with it. Records written here always come from a store, so proxies
+ * are stripped at this boundary instead of relying on each call site.
+ *
+ * toRaw() returns the untouched target, whose nested values are themselves raw.
+ * Nested fields are still unwrapped explicitly because a caller that spread a
+ * proxy into a fresh object ({ ...message }) hands over reactive children under
+ * a plain parent, which toRaw alone would leave in place.
+ */
+function rawChat(chat: Chat): Chat {
+  const base = toRaw(chat);
+  return {
+    ...base,
+    model: base.model ? toRaw(base.model) : null,
+    params: toRaw(base.params),
+  };
+}
+
+function rawMessage(message: Message): Message {
+  const base = toRaw(message);
+  return {
+    ...base,
+    model: base.model ? toRaw(base.model) : undefined,
+    attachments: toRaw(base.attachments).map((attachment) => toRaw(attachment)),
+  };
+}
 
 let dbPromise: Promise<IDBPDatabase<AiuiDB>> | null = null;
 
@@ -52,7 +82,7 @@ export async function getChat(id: string): Promise<Chat | undefined> {
 }
 
 export async function putChat(chat: Chat): Promise<void> {
-  await (await getDB()).put("chats", chat);
+  await (await getDB()).put("chats", rawChat(chat));
 }
 
 export async function deleteChat(id: string): Promise<void> {
@@ -79,7 +109,7 @@ export async function listMessages(chatId: string): Promise<Message[]> {
 }
 
 export async function putMessage(message: Message): Promise<void> {
-  await (await getDB()).put("messages", message);
+  await (await getDB()).put("messages", rawMessage(message));
 }
 
 export async function deleteMessage(id: string): Promise<void> {
@@ -139,8 +169,8 @@ export async function importData(chats: Chat[], messages: Message[]): Promise<vo
   const db = await getDB();
   const tx = db.transaction(["chats", "messages"], "readwrite");
   await Promise.all([
-    ...chats.map((chat) => tx.objectStore("chats").put(chat)),
-    ...messages.map((message) => tx.objectStore("messages").put(message)),
+    ...chats.map((chat) => tx.objectStore("chats").put(rawChat(chat))),
+    ...messages.map((message) => tx.objectStore("messages").put(rawMessage(message))),
     tx.done,
   ]);
 }
