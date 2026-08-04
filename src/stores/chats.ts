@@ -120,10 +120,14 @@ export const useChatsStore = defineStore("chats", () => {
    * Runs one assistant turn against the chat's current message list.
    * Shared by send() and regenerate() so both behave identically.
    */
-  async function runTurn(chat: Chat) {
-    if (!chat.model) {
-      throw new Error("Pick a model before sending a message.");
-    }
+  async function runTurn(input: Chat) {
+    // A chat created before any model existed keeps model: null, while the
+    // header picker displays the global default in its place. Honour the same
+    // fallback here, so the model the user can see selected is the one that
+    // runs, and pin it to the chat so later turns don't depend on the default.
+    const modelRef = input.model ?? settingsStore.settings.defaultModel;
+    const chat = modelRef && !input.model ? { ...input, model: modelRef } : input;
+    if (chat !== input) await persistChat(chat);
 
     const assistant: Message = {
       id: uid(),
@@ -133,7 +137,7 @@ export const useChatsStore = defineStore("chats", () => {
       reasoning: "",
       attachments: [],
       createdAt: Date.now(),
-      model: chat.model,
+      model: modelRef ?? undefined,
     };
     messages.value = [...messages.value, assistant];
     streamingMessageId.value = assistant.id;
@@ -143,7 +147,14 @@ export const useChatsStore = defineStore("chats", () => {
     const live = messages.value[messages.value.length - 1];
 
     try {
-      const model = providersStore.resolve(chat.model);
+      // Raised in here rather than before the message exists: a rejection out
+      // of runTurn escapes send(), whose callers don't catch, so the turn used
+      // to fail with nothing on screen and no request in the network log.
+      if (!modelRef) {
+        throw new Error("Pick a model before sending a message.");
+      }
+
+      const model = providersStore.resolve(modelRef);
       const modelMessages = await buildModelMessages(
         messages.value.slice(0, -1),
         effectiveParams.value.systemPrompt,
@@ -180,7 +191,7 @@ export const useChatsStore = defineStore("chats", () => {
           messages.value = messages.value.filter((m) => m.id !== live.id);
         }
       } else {
-        const provider = providersStore.byId(chat.model.providerId);
+        const provider = modelRef ? providersStore.byId(modelRef.providerId) : undefined;
         live.error = explainNetworkError(error, provider?.baseUrl ?? "");
         await db.putMessage({ ...live });
       }
