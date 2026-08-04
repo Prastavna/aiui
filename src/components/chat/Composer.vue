@@ -6,7 +6,12 @@ import type { Attachment } from "@/lib/types";
 import { formatBytes, uid } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settings";
 
-const props = defineProps<{ streaming: boolean; disabled: boolean }>();
+const props = defineProps<{
+  streaming: boolean;
+  disabled: boolean;
+  /** Shown in place of the prompt so a blocked composer explains itself. */
+  disabledReason?: string | null;
+}>();
 const emit = defineEmits<{
   send: [text: string, attachments: Attachment[]];
   stop: [];
@@ -196,7 +201,9 @@ function onKeydown(event: KeyboardEvent) {
           ref="textarea"
           v-model="text"
           rows="1"
-          :placeholder="disabled ? 'Add a provider in Settings to start' : 'Send a message…'"
+          :placeholder="
+            disabled ? (disabledReason ?? 'Add a provider in Settings to start') : 'Send a message…'
+          "
           :disabled="disabled"
           class="scrollbar-thin max-h-60 min-h-9 flex-1 resize-none bg-transparent px-1 py-2 text-[0.9375rem] outline-none placeholder:text-muted-foreground disabled:opacity-50"
           @keydown="onKeydown"

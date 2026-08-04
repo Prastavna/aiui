@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 import { buildModelMessages, deriveTitle } from "./chat-engine";
 import { initHighlighter, renderMarkdown } from "./markdown";
+import { describeNoModels } from "./providers/availability";
 import { duplicateHeaderNames, type HeaderRow, rowsToHeaders } from "./providers/headers";
 import { explainNetworkError } from "./providers/resolve";
-import type { Message } from "./types";
+import type { Message, ProviderConfig } from "./types";
 
 function rows(...pairs: [string, string][]): HeaderRow[] {
   return pairs.map(([name, value], index) => ({ id: String(index), name, value }));
@@ -176,6 +177,60 @@ describe("explainNetworkError", () => {
       "https://api.example.com/v1",
     );
     expect(message).toBe("401 Unauthorized — invalid api key");
+  });
+});
+
+describe("describeNoModels", () => {
+  function provider(partial: Partial<ProviderConfig>): ProviderConfig {
+    return {
+      id: partial.id ?? "p1",
+      presetId: partial.presetId ?? "anthropic",
+      label: partial.label ?? "Anthropic",
+      protocol: partial.protocol ?? "anthropic",
+      baseUrl: partial.baseUrl ?? "https://api.anthropic.com/v1",
+      apiKey: partial.apiKey ?? "sk-test",
+      headers: partial.headers ?? {},
+      enabled: partial.enabled ?? true,
+      cachedModels: partial.cachedModels ?? [],
+      cachedModelsAt: null,
+      createdAt: 0,
+      ...partial,
+    };
+  }
+
+  it("reports an empty provider list", () => {
+    expect(describeNoModels([])).toBe("No providers configured yet.");
+  });
+
+  it("reports providers that are all switched off", () => {
+    expect(describeNoModels([provider({ enabled: false })])).toBe(
+      "Every provider is switched off.",
+    );
+  });
+
+  it("names a provider missing a key the preset requires", () => {
+    expect(describeNoModels([provider({ apiKey: "" })])).toBe("Anthropic still needs an API key.");
+  });
+
+  it("names a provider missing a base URL", () => {
+    expect(
+      describeNoModels([provider({ presetId: "custom", label: "Gateway", baseUrl: "" })]),
+    ).toBe("Gateway still needs a base URL.");
+  });
+
+  it("points a configured but undiscovered provider at Fetch models", () => {
+    expect(describeNoModels([provider({ presetId: "custom", label: "Gateway" })])).toContain(
+      "Fetch models",
+    );
+  });
+
+  it("joins several provider names", () => {
+    expect(
+      describeNoModels([
+        provider({ id: "a", label: "One", apiKey: "" }),
+        provider({ id: "b", label: "Two", apiKey: "" }),
+      ]),
+    ).toBe("One and Two still needs an API key.");
   });
 });
 

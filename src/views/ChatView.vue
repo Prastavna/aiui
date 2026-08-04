@@ -7,6 +7,7 @@ import MessageItem from "@/components/chat/MessageItem.vue";
 import ModelPicker from "@/components/chat/ModelPicker.vue";
 import ParamsPanel from "@/components/chat/ParamsPanel.vue";
 import Button from "@/components/ui/Button.vue";
+import { describeNoModels } from "@/lib/providers/availability";
 import type { Attachment, ModelRef } from "@/lib/types";
 import { useChatsStore } from "@/stores/chats";
 import { useProvidersStore } from "@/stores/providers";
@@ -26,6 +27,11 @@ const paramsOpen = ref(false);
 const pinnedToBottom = ref(true);
 
 const hasProviders = computed(() => providersStore.availableModels.length > 0);
+
+/** Names what's missing whenever the composer is blocked. */
+const noModelsReason = computed(() =>
+  hasProviders.value ? null : describeNoModels(providersStore.providers),
+);
 
 const currentModel = computed<ModelRef | null>(
   () => chatsStore.activeChat?.model ?? settingsStore.settings.defaultModel ?? null,
@@ -134,10 +140,15 @@ async function onModelChange(model: ModelRef) {
         class="flex min-h-[60vh] flex-col items-center justify-center text-center"
       >
         <template v-if="!hasProviders">
-          <h1 class="text-lg font-semibold">No providers configured</h1>
+          <h1 class="text-lg font-semibold">No model available</h1>
           <p class="mt-1 max-w-sm text-sm text-muted-foreground">
-            Add an API provider to start chatting. Keys are stored only in this browser and sent
-            directly to the provider.
+            {{ noModelsReason }}
+          </p>
+          <p
+            v-if="!providersStore.providers.length"
+            class="mt-1 max-w-sm text-sm text-muted-foreground"
+          >
+            Keys are stored only in this browser and sent directly to the provider.
           </p>
           <Button class="mt-4" @click="router.push('/settings')"> Open settings </Button>
         </template>
@@ -166,6 +177,7 @@ async function onModelChange(model: ModelRef) {
   <Composer
     :streaming="chatsStore.streaming"
     :disabled="!hasProviders"
+    :disabled-reason="noModelsReason"
     @send="onSend"
     @stop="chatsStore.stop()"
   />
