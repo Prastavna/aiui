@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vite-plus/test";
 import { buildModelMessages, deriveTitle } from "./chat-engine";
 import { initHighlighter, renderMarkdown } from "./markdown";
+import { duplicateHeaderNames, type HeaderRow, rowsToHeaders } from "./providers/headers";
 import { explainNetworkError } from "./providers/resolve";
 import type { Message } from "./types";
+
+function rows(...pairs: [string, string][]): HeaderRow[] {
+  return pairs.map(([name, value], index) => ({ id: String(index), name, value }));
+}
 
 function message(partial: Partial<Message>): Message {
   return {
@@ -171,6 +176,48 @@ describe("explainNetworkError", () => {
       "https://api.example.com/v1",
     );
     expect(message).toBe("401 Unauthorized — invalid api key");
+  });
+});
+
+describe("rowsToHeaders", () => {
+  it("collapses rows into a record, trimming names", () => {
+    expect(
+      rowsToHeaders(rows(["X-Title", "aiui"], ["  HTTP-Referer  ", "https://x.test"])),
+    ).toEqual({ "X-Title": "aiui", "HTTP-Referer": "https://x.test" });
+  });
+
+  it("keeps a half-typed row out of the config instead of failing", () => {
+    expect(rowsToHeaders(rows(["", "orphan value"], ["X-Ok", "yes"]))).toEqual({ "X-Ok": "yes" });
+  });
+
+  it("drops names fetch would throw on", () => {
+    expect(rowsToHeaders(rows(["Bad Name", "v"], ["Also:Bad", "v"], ["Fine", "v"]))).toEqual({
+      Fine: "v",
+    });
+  });
+
+  it("lets the last row win a repeated name", () => {
+    expect(rowsToHeaders(rows(["X-Key", "first"], ["X-Key", "second"]))).toEqual({
+      "X-Key": "second",
+    });
+  });
+
+  it("preserves an empty value, which is a legal header", () => {
+    expect(rowsToHeaders(rows(["X-Empty", ""]))).toEqual({ "X-Empty": "" });
+  });
+});
+
+describe("duplicateHeaderNames", () => {
+  it("compares case-insensitively, as the transport does", () => {
+    expect(duplicateHeaderNames(rows(["X-Key", "a"], ["x-key", "b"]))).toEqual(["X-Key"]);
+  });
+
+  it("reports nothing for distinct names", () => {
+    expect(duplicateHeaderNames(rows(["A", "1"], ["B", "2"]))).toEqual([]);
+  });
+
+  it("ignores blank rows", () => {
+    expect(duplicateHeaderNames(rows(["", "1"], ["", "2"]))).toEqual([]);
   });
 });
 
