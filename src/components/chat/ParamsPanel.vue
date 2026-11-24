@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import Button from "@/components/ui/Button.vue";
 import Dialog from "@/components/ui/Dialog.vue";
 import Input from "@/components/ui/Input.vue";
 import Label from "@/components/ui/Label.vue";
@@ -14,6 +15,8 @@ const chatsStore = useChatsStore();
 const settingsStore = useSettingsStore();
 
 const defaults = computed(() => settingsStore.settings.defaults);
+
+const hasOverrides = computed(() => Object.keys(chatsStore.activeChat?.params ?? {}).length > 0);
 
 /**
  * Overrides are stored sparsely: an empty field means "inherit the default",
@@ -51,6 +54,11 @@ const systemPrompt = override("systemPrompt");
 
 const placeholder = (value: number | null, fallback: string) =>
   value === null ? fallback : String(value);
+
+function clearOverrides() {
+  const chat = chatsStore.activeChat;
+  if (chat) void chatsStore.setChatParams(chat.id, {});
+}
 </script>
 
 <template>
@@ -59,8 +67,8 @@ const placeholder = (value: number | null, fallback: string) =>
     title="Chat settings"
     description="Overrides for this chat only. Leave a field empty to inherit the global default."
   >
-    <div class="scrollbar-thin flex flex-col gap-4 overflow-y-auto">
-      <div class="grid grid-cols-3 gap-3">
+    <div class="scrollbar-thin flex flex-col gap-5 overflow-y-auto">
+      <div class="grid gap-3 sm:grid-cols-3">
         <div class="flex flex-col gap-1.5">
           <Label for="param-temperature">Temperature</Label>
           <Input
@@ -99,6 +107,21 @@ const placeholder = (value: number | null, fallback: string) =>
           :placeholder="defaults.systemPrompt || 'No system prompt'"
         />
       </div>
+    </div>
+
+    <div
+      class="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        class="justify-start text-muted-foreground"
+        :disabled="!hasOverrides"
+        @click="clearOverrides"
+      >
+        Clear overrides
+      </Button>
+      <Button size="sm" class="sm:min-w-24" @click="open = false">Done</Button>
     </div>
   </Dialog>
 </template>

@@ -26,6 +26,7 @@ const props = defineProps<{
   disabled?: boolean;
   class?: string;
   id?: string;
+  ariaLabel?: string;
 }>();
 
 const model = defineModel<T | undefined>();
@@ -35,9 +36,10 @@ const model = defineModel<T | undefined>();
   <SelectRoot v-model="model" :disabled="props.disabled">
     <SelectTrigger
       :id="props.id"
+      :aria-label="props.ariaLabel"
       :class="
         cn(
-          'flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground',
+          'flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow,border-color] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground',
           props.class,
         )
       "
@@ -52,14 +54,14 @@ const model = defineModel<T | undefined>();
       <SelectContent
         position="popper"
         :side-offset="4"
-        class="relative z-50 max-h-72 min-w-[var(--reka-select-trigger-width)] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md"
+        class="relative z-50 max-h-72 min-w-[var(--reka-select-trigger-width)] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lg"
       >
-        <SelectViewport class="scrollbar-thin max-h-72 overflow-y-auto p-1">
+        <SelectViewport class="scrollbar-thin max-h-72 overflow-y-auto p-1.5">
           <SelectItem
             v-for="option in props.options"
             :key="option.value"
             :value="option.value"
-            class="relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-7 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+            class="relative flex w-full cursor-default items-center gap-2 rounded-md py-2 pr-2 pl-7 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
           >
             <SelectItemIndicator class="absolute left-2 flex items-center">
               <Check class="size-3.5" />

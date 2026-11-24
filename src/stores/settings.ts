@@ -18,9 +18,18 @@ export const useSettingsStore = defineStore("settings", () => {
     settings.value.theme === "system" ? systemDark.value : settings.value.theme === "dark",
   );
 
-  watch(isDark, (dark) => document.documentElement.classList.toggle("dark", dark), {
-    immediate: true,
-  });
+  /** Keeps the mobile browser chrome in step with the app theme. */
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+
+  watch(
+    isDark,
+    (dark) => {
+      document.documentElement.classList.toggle("dark", dark);
+      document.documentElement.style.colorScheme = dark ? "dark" : "light";
+      themeColor?.setAttribute("content", dark ? "#131316" : "#fdfdfd");
+    },
+    { immediate: true },
+  );
 
   function setTheme(theme: AppSettings["theme"]) {
     settings.value.theme = theme;

@@ -4,7 +4,11 @@ import Select, { type SelectOption } from "@/components/ui/Select.vue";
 import type { ModelRef } from "@/lib/types";
 import { useProvidersStore } from "@/stores/providers";
 
-const props = defineProps<{ modelValue: ModelRef | null; class?: string }>();
+const props = defineProps<{
+  modelValue: ModelRef | null;
+  class?: string;
+  ariaLabel?: string;
+}>();
 const emit = defineEmits<{ "update:modelValue": [value: ModelRef] }>();
 
 const providersStore = useProvidersStore();
@@ -36,6 +40,7 @@ const selected = computed({
   <Select
     v-model="selected"
     :options="options"
+    :aria-label="props.ariaLabel ?? 'Model'"
     :placeholder="options.length ? 'Select a model' : 'No models available'"
     :disabled="!options.length"
     :class="props.class"

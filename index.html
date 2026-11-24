@@ -3,8 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>aiui</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#fdfdfd" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="A private, client-only AI chat. Bring your own provider key; conversations never leave this browser."
+    />
+    <meta name="apple-mobile-web-app-title" content="aiui" />
+    <title>aiui — private AI chat</title>
+    <script>
+      // Apply the stored theme before first paint so dark mode does not flash
+      // white while the app bundle loads.
+      try {
+        const stored = JSON.parse(localStorage.getItem("aiui:settings:v1") || "{}");
+        const dark =
+          stored.theme === "dark" ||
+          (stored.theme !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        if (dark) document.documentElement.classList.add("dark");
+        document.documentElement.style.colorScheme = dark ? "dark" : "light";
+        document
+          .querySelector('meta[name="theme-color"]')
+          ?.setAttribute("content", dark ? "#131316" : "#fdfdfd");
+      } catch {
+        // A corrupt settings entry is handled by the store; nothing to do here.
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>

@@ -75,6 +75,39 @@ const overridesPresetProtocol = computed(
   () => !!preset.value && preset.value.protocol !== props.provider.protocol,
 );
 
+const initials = computed(() => {
+  const parts = props.provider.label
+    .replace(/\(.*?\)/g, "")
+    .trim()
+    .split(/\s+/);
+  return ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
+});
+
+const protocolLabel = computed(() => {
+  switch (props.provider.protocol) {
+    case "openai":
+      return "OpenAI";
+    case "anthropic":
+      return "Anthropic";
+    case "google":
+      return "Google Gemini";
+    default:
+      return "OpenAI-compatible";
+  }
+});
+
+const status = computed(() => {
+  if (!props.provider.enabled) return { dot: "bg-muted-foreground/40", label: "Disabled" };
+  if (!props.provider.baseUrl.trim()) return { dot: "bg-warning", label: "Needs a base URL" };
+  if (needsKey.value) return { dot: "bg-warning", label: "Needs an API key" };
+  return { dot: "bg-success", label: "Ready" };
+});
+
+const modelSummary = computed(() => {
+  const count = props.provider.cachedModels.length;
+  return count === 0 ? "No models fetched yet" : `${count} model${count === 1 ? "" : "s"}`;
+});
+
 function patch(patchValue: Partial<ProviderConfig>) {
   providersStore.update(props.provider.id, patchValue);
 }
@@ -158,187 +191,220 @@ async function test() {
     testing.value = false;
   }
 }
+
+function remove() {
+  if (!confirm(`Remove ${props.provider.label}? Its key will be deleted from this browser.`)) {
+    return;
+  }
+  providersStore.remove(props.provider.id);
+}
 </script>
 
 <template>
-  <div class="rounded-lg border border-border">
-    <div class="flex items-center gap-3 p-3">
+  <div class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+    <div class="flex items-center gap-1 p-3 sm:gap-2 sm:p-4">
       <button
         type="button"
-        class="flex min-w-0 flex-1 items-center gap-2 text-left"
+        class="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/20"
+        :aria-expanded="expanded"
         @click="expanded = !expanded"
       >
-        <ChevronDown
-          class="size-4 shrink-0 text-muted-foreground transition-transform"
-          :class="expanded && 'rotate-180'"
-        />
-        <span class="min-w-0">
-          <span class="block truncate text-sm font-medium">
-            {{ provider.label }}
+        <span
+          class="grid size-10 shrink-0 place-items-center rounded-xl border border-border bg-muted/50 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+          aria-hidden="true"
+        >
+          {{ initials }}
+        </span>
+        <span class="min-w-0 flex-1">
+          <span class="flex items-center gap-2">
+            <span class="truncate text-sm font-medium">{{ provider.label }}</span>
+            <TriangleAlert
+              v-if="needsKey"
+              class="size-3.5 shrink-0 text-muted-foreground"
+              aria-label="API key required"
+            />
           </span>
-          <span class="block truncate text-xs text-muted-foreground">
-            {{ provider.cachedModels.length }} models · {{ provider.protocol }}
+          <span class="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span class="size-1.5 shrink-0 rounded-full" :class="status.dot" aria-hidden="true" />
+            <span class="truncate">
+              {{ status.label }} · {{ modelSummary }} · {{ protocolLabel }}
+            </span>
           </span>
         </span>
       </button>
 
-      <TriangleAlert
-        v-if="needsKey"
-        class="size-4 shrink-0 text-muted-foreground"
-        title="API key required"
-      />
       <Switch
         :model-value="provider.enabled"
+        :aria-label="`Enable ${provider.label}`"
         title="Enabled"
         @update:model-value="patch({ enabled: $event })"
       />
       <Button
         variant="ghost"
         size="icon-sm"
-        title="Remove provider"
-        @click="providersStore.remove(provider.id)"
+        :aria-label="expanded ? 'Collapse provider' : 'Expand provider'"
+        :aria-expanded="expanded"
+        @click="expanded = !expanded"
       >
-        <Trash2 class="size-4" />
+        <ChevronDown
+          class="size-4 text-muted-foreground transition-transform"
+          :class="expanded && 'rotate-180'"
+        />
       </Button>
     </div>
 
-    <div v-if="expanded" class="flex flex-col gap-3 border-t border-border p-3">
-      <div class="grid gap-3 sm:grid-cols-2">
+    <div v-if="expanded" class="flex flex-col gap-5 border-t border-border p-3 sm:p-4">
+      <!-- Connection -->
+      <section class="flex flex-col gap-3">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="flex flex-col gap-1.5">
+            <Label :for="`label-${provider.id}`">Display name</Label>
+            <Input
+              :id="`label-${provider.id}`"
+              :model-value="provider.label"
+              @update:model-value="patch({ label: $event })"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label :for="`protocol-${provider.id}`">Protocol</Label>
+            <Select
+              :id="`protocol-${provider.id}`"
+              :model-value="provider.protocol"
+              :options="PROTOCOL_OPTIONS"
+              aria-label="Protocol"
+              @update:model-value="setProtocol"
+            />
+          </div>
+        </div>
+
         <div class="flex flex-col gap-1.5">
-          <Label :for="`label-${provider.id}`">Display name</Label>
+          <Label :for="`url-${provider.id}`">Base URL</Label>
           <Input
-            :id="`label-${provider.id}`"
-            :model-value="provider.label"
-            @update:model-value="patch({ label: $event })"
+            :id="`url-${provider.id}`"
+            :model-value="provider.baseUrl"
+            placeholder="https://api.example.com/v1"
+            class="font-mono text-[13px]"
+            @update:model-value="patch({ baseUrl: $event })"
           />
+          <p class="text-xs leading-5 text-muted-foreground">
+            The wire format this endpoint speaks, not who runs it. Change the protocol when the base
+            URL points at a gateway that differs from the preset.
+          </p>
+          <p v-if="overridesPresetProtocol" class="text-xs leading-5 text-muted-foreground">
+            Overriding {{ preset?.label }}'s default protocol
+            <span class="font-mono">{{ preset?.protocol }}</span
+            >. Re-fetch models after changing this — discovery uses the protocol's own listing
+            endpoint.
+          </p>
         </div>
+
         <div class="flex flex-col gap-1.5">
-          <Label :for="`protocol-${provider.id}`">Protocol</Label>
-          <Select
-            :id="`protocol-${provider.id}`"
-            :model-value="provider.protocol"
-            :options="PROTOCOL_OPTIONS"
-            @update:model-value="setProtocol"
-          />
+          <Label :for="`key-${provider.id}`">
+            API key
+            <a
+              v-if="preset?.apiKeyUrl"
+              :href="preset.apiKeyUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground hover:text-foreground"
+            >
+              get one <ExternalLink class="size-3" />
+            </a>
+          </Label>
+          <div class="relative">
+            <Input
+              :id="`key-${provider.id}`"
+              :model-value="provider.apiKey"
+              :type="showKey ? 'text' : 'password'"
+              class="pr-10 font-mono text-[13px]"
+              :placeholder="preset?.requiresKey ? 'Required' : 'Not required'"
+              @update:model-value="patch({ apiKey: $event })"
+            />
+            <button
+              type="button"
+              class="absolute top-1/2 right-1 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              :aria-label="showKey ? 'Hide key' : 'Show key'"
+              @click="showKey = !showKey"
+            >
+              <EyeOff v-if="showKey" class="size-4" />
+              <Eye v-else class="size-4" />
+            </button>
+          </div>
+          <p v-if="preset?.note" class="text-xs leading-5 text-muted-foreground">
+            {{ preset.note }}
+          </p>
+          <p v-if="preset?.cors === 'unknown'" class="text-xs leading-5 text-muted-foreground">
+            This provider hasn't been confirmed to allow browser-origin requests. Use "Test" below —
+            if it fails with a connection error, the provider is blocking CORS and needs a proxy.
+          </p>
         </div>
-      </div>
+      </section>
 
-      <div class="flex flex-col gap-1.5">
-        <Label :for="`url-${provider.id}`">Base URL</Label>
-        <Input
-          :id="`url-${provider.id}`"
-          :model-value="provider.baseUrl"
-          placeholder="https://api.example.com/v1"
-          @update:model-value="patch({ baseUrl: $event })"
-        />
-        <p class="text-xs text-muted-foreground">
-          The wire format this endpoint speaks, not who runs it. Change the protocol when the base
-          URL points at a gateway that differs from the preset.
-        </p>
-        <p v-if="overridesPresetProtocol" class="text-xs text-muted-foreground">
-          Overriding {{ preset?.label }}'s default protocol
-          <span class="font-mono">{{ preset?.protocol }}</span
-          >. Re-fetch models after changing this — discovery uses the protocol's own listing
-          endpoint.
-        </p>
-      </div>
-
-      <div class="flex flex-col gap-1.5">
-        <Label :for="`key-${provider.id}`">
-          API key
-          <a
-            v-if="preset?.apiKeyUrl"
-            :href="preset.apiKeyUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground hover:text-foreground"
-          >
-            get one <ExternalLink class="size-3" />
-          </a>
-        </Label>
-        <div class="relative">
-          <Input
-            :id="`key-${provider.id}`"
-            :model-value="provider.apiKey"
-            :type="showKey ? 'text' : 'password'"
-            class="pr-9 font-mono"
-            :placeholder="preset?.requiresKey ? 'Required' : 'Not required'"
-            @update:model-value="patch({ apiKey: $event })"
-          />
-          <button
-            type="button"
-            class="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            :aria-label="showKey ? 'Hide key' : 'Show key'"
-            @click="showKey = !showKey"
-          >
-            <EyeOff v-if="showKey" class="size-4" />
-            <Eye v-else class="size-4" />
-          </button>
-        </div>
-        <p v-if="preset?.note" class="text-xs text-muted-foreground">
-          {{ preset.note }}
-        </p>
-        <p v-if="preset?.cors === 'unknown'" class="text-xs text-muted-foreground">
-          This provider hasn't been confirmed to allow browser-origin requests. Use "Test" below —
-          if it fails with a connection error, the provider is blocking CORS and needs a proxy.
-        </p>
-      </div>
-
-      <div class="flex flex-col gap-1.5">
-        <div class="flex items-center justify-between">
-          <Label>Custom headers</Label>
+      <!-- Advanced -->
+      <section class="flex flex-col gap-3 border-t border-border pt-4">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="text-xs font-semibold tracking-wide uppercase">Custom headers</h3>
+            <p class="mt-0.5 text-xs text-muted-foreground">
+              Sent with every request, including model discovery.
+            </p>
+          </div>
           <Button variant="outline" size="sm" @click="addHeader">
             <Plus class="size-3.5" />
-            Add header
+            Add
           </Button>
         </div>
 
-        <div v-for="row in headerRows" :key="row.id" class="flex gap-2">
+        <div v-for="row in headerRows" :key="row.id" class="flex flex-col gap-2 sm:flex-row">
           <Input
             :model-value="row.name"
             placeholder="Header-Name"
-            class="flex-1 font-mono"
+            class="font-mono text-[13px] sm:flex-1"
             aria-label="Header name"
             @update:model-value="updateHeader(row.id, { name: $event })"
           />
           <Input
             :model-value="row.value"
             placeholder="value"
-            class="flex-[2] font-mono"
+            class="font-mono text-[13px] sm:flex-[2]"
             aria-label="Header value"
             @update:model-value="updateHeader(row.id, { value: $event })"
           />
           <Button
             variant="ghost"
             size="icon-sm"
-            class="mt-0.5"
+            class="self-end text-muted-foreground hover:text-destructive sm:self-auto"
             title="Remove header"
+            aria-label="Remove header"
             @click="removeHeader(row.id)"
           >
             <Trash2 class="size-4" />
           </Button>
         </div>
 
-        <p class="text-xs text-muted-foreground">
-          Sent with every request to this provider, including model discovery. Use for gateway
-          routing or attribution headers such as OpenRouter's
+        <p class="text-xs leading-5 text-muted-foreground">
+          Use for gateway routing or attribution headers such as OpenRouter's
           <span class="font-mono">HTTP-Referer</span>.
         </p>
-        <p v-if="invalidHeaderNames.length" class="text-xs text-destructive">
+        <p v-if="invalidHeaderNames.length" class="text-xs leading-5 text-destructive">
           Not valid header names, so they won't be sent:
           <span class="font-mono">{{ invalidHeaderNames.join(", ") }}</span
           >. Names allow letters, digits and <span class="font-mono">-_.~!#$%&amp;'*+^`|</span> — no
           spaces or colons.
         </p>
-        <p v-if="duplicatedHeaderNames.length" class="text-xs text-muted-foreground">
+        <p v-if="duplicatedHeaderNames.length" class="text-xs leading-5 text-muted-foreground">
           Repeated, so only the last row of each is sent:
           <span class="font-mono">{{ duplicatedHeaderNames.join(", ") }}</span>
         </p>
-      </div>
+      </section>
 
-      <div class="flex flex-col gap-1.5">
-        <div class="flex items-center justify-between">
-          <Label>Models</Label>
+      <!-- Models -->
+      <section class="flex flex-col gap-3 border-t border-border pt-4">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="text-xs font-semibold tracking-wide uppercase">Models</h3>
+            <p class="mt-0.5 text-xs text-muted-foreground">{{ modelSummary }}</p>
+          </div>
           <Button variant="outline" size="sm" :disabled="discovery.loading" @click="refresh">
             <Loader2 v-if="discovery.loading" class="size-3.5 animate-spin" />
             <RefreshCw v-else class="size-3.5" />
@@ -346,17 +412,18 @@ async function test() {
           </Button>
         </div>
 
-        <div class="flex gap-2">
+        <div class="flex flex-col gap-2 sm:flex-row">
           <Select
             v-model="testModel"
             :options="modelOptions"
             placeholder="No models fetched yet"
             :disabled="!modelOptions.length"
-            class="flex-1"
+            aria-label="Model to test"
+            class="sm:flex-1"
           />
           <Button
             variant="secondary"
-            size="default"
+            class="sm:w-24"
             :disabled="!testModel || testing"
             @click="test"
           >
@@ -365,18 +432,30 @@ async function test() {
           </Button>
         </div>
 
-        <p v-if="discovery.error" class="text-xs text-destructive">
+        <p v-if="discovery.error" class="text-xs leading-5 text-destructive">
           {{ discovery.error }}
         </p>
         <p
           v-if="testResult"
-          class="flex items-start gap-1.5 text-xs"
+          class="flex items-start gap-1.5 text-xs leading-5"
           :class="testResult.ok ? 'text-muted-foreground' : 'text-destructive'"
         >
           <Check v-if="testResult.ok" class="mt-0.5 size-3.5 shrink-0" />
           <X v-else class="mt-0.5 size-3.5 shrink-0" />
           {{ testResult.message }}
         </p>
+      </section>
+
+      <div class="flex justify-end border-t border-border pt-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          class="text-muted-foreground hover:text-destructive"
+          @click="remove"
+        >
+          <Trash2 class="size-3.5" />
+          Remove provider
+        </Button>
       </div>
     </div>
   </div>

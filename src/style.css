@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* Only hide hover-revealed controls on devices that actually have a pointer. */
+@custom-variant can-hover (@media (hover: hover) and (pointer: fine));
 
 @theme inline {
   --color-background: var(--background);
@@ -22,56 +24,84 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-bubble: var(--bubble);
+  --color-bubble-foreground: var(--bubble-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
+/*
+ * Monochrome palette. The only "color" in the interface is functional:
+ * status dots and destructive actions. Everything else is a neutral ramp,
+ * with contrast carrying the hierarchy.
+ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.75rem;
+  --background: oklch(0.995 0 0);
+  --foreground: oklch(0.16 0.004 285);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.16 0.004 285);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.16 0.004 285);
+  --primary: oklch(0.185 0.004 285);
+  --primary-foreground: oklch(0.995 0 0);
+  --secondary: oklch(0.963 0.002 285);
+  --secondary-foreground: oklch(0.21 0.004 285);
+  --muted: oklch(0.965 0.002 285);
+  --muted-foreground: oklch(0.5 0.006 285);
+  --accent: oklch(0.952 0.003 285);
+  --accent-foreground: oklch(0.2 0.004 285);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --destructive-foreground: oklch(0.995 0 0);
+  --border: oklch(0.916 0.003 285);
+  --input: oklch(0.9 0.004 285);
+  --ring: oklch(0.32 0.006 285);
+  --sidebar: oklch(0.975 0.002 285);
+  --sidebar-foreground: oklch(0.19 0.004 285);
+  --bubble: oklch(0.21 0.004 285);
+  --bubble-foreground: oklch(0.99 0 0);
+  --success: oklch(0.6 0.14 155);
+  --warning: oklch(0.72 0.15 75);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.145 0.004 285);
+  --foreground: oklch(0.965 0.002 285);
+  --card: oklch(0.192 0.004 285);
+  --card-foreground: oklch(0.965 0.002 285);
+  --popover: oklch(0.21 0.005 285);
+  --popover-foreground: oklch(0.965 0.002 285);
+  --primary: oklch(0.955 0.002 285);
+  --primary-foreground: oklch(0.17 0.004 285);
+  --secondary: oklch(0.255 0.005 285);
+  --secondary-foreground: oklch(0.97 0.002 285);
+  --muted: oklch(0.245 0.005 285);
+  --muted-foreground: oklch(0.72 0.006 285);
+  --accent: oklch(0.275 0.006 285);
+  --accent-foreground: oklch(0.98 0.002 285);
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.556 0 0);
+  --destructive-foreground: oklch(0.995 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.75 0.006 285);
+  --sidebar: oklch(0.168 0.004 285);
+  --sidebar-foreground: oklch(0.94 0.002 285);
+  --bubble: oklch(0.285 0.006 285);
+  --bubble-foreground: oklch(0.985 0 0);
+  --success: oklch(0.72 0.14 155);
+  --warning: oklch(0.8 0.14 80);
 }
 
 @layer base {
@@ -85,15 +115,42 @@
     @apply h-full;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
-    font-family:
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      "Segoe UI",
-      Roboto,
-      sans-serif;
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background-color: var(--foreground);
+    color: var(--background);
+  }
+
+  button,
+  [role="button"],
+  a,
+  label,
+  summary {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
@@ -101,6 +158,72 @@
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
+    overscroll-behavior: contain;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+    background-color: var(--border);
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: var(--input);
+  }
+
+  /* iOS home-indicator and notch breathing room. */
+  .pb-safe {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .pt-safe {
+    padding-top: max(0rem, env(safe-area-inset-top));
+  }
+
+  .px-safe {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /*
+   * Faint dot grid behind the empty state. Masked to a soft centre so it
+   * reads as texture, not as a table.
+   */
+  .hero-grid {
+    background-image: radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(ellipse 60% 55% at 50% 45%, black 15%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 45%, black 15%, transparent 100%);
+  }
+}
+
+/*
+ * iOS Safari zooms the whole page when a form control smaller than 16px gets
+ * focus. Keep controls at 16px on phones; everything else keeps the type scale.
+ */
+@media (max-width: 639px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
   }
 }
 
@@ -126,11 +249,11 @@
 }
 
 .md h1 {
-  @apply mt-6 mb-3 text-xl font-semibold;
+  @apply mt-6 mb-3 text-xl font-semibold tracking-tight;
 }
 
 .md h2 {
-  @apply mt-6 mb-3 text-lg font-semibold;
+  @apply mt-6 mb-3 text-lg font-semibold tracking-tight;
 }
 
 .md h3 {
@@ -156,6 +279,10 @@
   @apply my-1;
 }
 
+.md li::marker {
+  color: var(--muted-foreground);
+}
+
 .md blockquote {
   @apply border-border text-muted-foreground my-3 border-l-2 pl-4;
 }
@@ -168,8 +295,9 @@
   @apply border-border my-6;
 }
 
+/* Tables scroll horizontally on phones instead of stretching the transcript. */
 .md table {
-  @apply my-3 w-full border-collapse text-sm;
+  @apply my-3 block w-full max-w-full overflow-x-auto border-collapse text-sm;
 }
 
 .md th,
@@ -187,11 +315,11 @@
 }
 
 .md-code {
-  @apply border-border bg-muted/40 my-4 overflow-hidden rounded-lg border;
+  @apply border-border bg-muted/40 my-4 overflow-hidden rounded-xl border;
 }
 
 .md-code-header {
-  @apply border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 font-mono text-xs;
+  @apply border-border text-muted-foreground flex items-center justify-between border-b px-3 py-2 font-mono text-xs;
 }
 
 .md-code pre {
@@ -200,6 +328,10 @@
 
 .md-code pre code {
   @apply font-mono;
+}
+
+.md-copy {
+  @apply hover:text-foreground cursor-pointer rounded px-1.5 py-0.5 transition-colors;
 }
 
 .dark .shiki,
