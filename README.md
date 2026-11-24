@@ -29,10 +29,11 @@ in settings:
 | `google`            | `@ai-sdk/google`            | Google Gemini                              |
 | `openai-compatible` | `@ai-sdk/openai-compatible` | everything else with a `/chat/completions` |
 
-Presets ship for OpenAI, Anthropic, Google, OpenRouter, Groq, DeepSeek, Mistral,
-xAI, Together, Fireworks, Cerebras, Perplexity, Nebius, Hyperbolic, Novita,
-Ollama, LM Studio, llama.cpp, and vLLM. Anything not listed works through
-**Custom (OpenAI-compatible)** by pasting a base URL.
+Presets ship for OpenAI, Anthropic, Google, OpenCode Zen, OpenCode Go,
+OpenRouter, Groq, DeepSeek, Mistral, xAI, Together, Fireworks, Cerebras,
+Perplexity, Nebius, Hyperbolic, Novita, Ollama, LM Studio, llama.cpp, and vLLM.
+Anything not listed works through **Custom (OpenAI-compatible)** by pasting a
+base URL.
 
 Adding a preset means one entry in `src/lib/providers/presets.ts` — the resolver
 in `resolve.ts` never changes, because it dispatches purely on protocol.
@@ -49,7 +50,10 @@ blocks the request before it leaves the page.
 - **Local runtimes** need to be told to accept browser origins — for example
   `OLLAMA_ORIGINS="*"` for Ollama, or `--allowed-origins` for vLLM.
 - **Some providers block browser origins entirely.** They cannot be used without
-  a proxy, and no client-side change will fix it.
+  a proxy, and no client-side change will fix it. OpenCode Zen and OpenCode Go
+  are both in this group: their hosted APIs answer CORS preflights with a 404,
+  so point the provider's base URL at a proxy (or at a self-hosted OpenCode
+  configured to allow this origin).
 
 Each provider has a **Test** button in settings that performs a real one-token
 request, so you find out which category a provider falls into before you start a

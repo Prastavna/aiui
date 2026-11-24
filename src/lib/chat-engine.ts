@@ -82,13 +82,16 @@ export async function streamAssistant(options: {
   params: GenerationParams;
   signal: AbortSignal;
   handlers: StreamHandlers;
+  /** Per-request headers, such as a provider's session id. */
+  headers?: Record<string, string>;
 }): Promise<{ text: string; reasoning: string }> {
-  const { model, messages, params, signal, handlers } = options;
+  const { model, messages, params, signal, handlers, headers } = options;
 
   const result = streamText({
     model,
     messages,
     abortSignal: signal,
+    ...(headers && Object.keys(headers).length > 0 && { headers }),
     ...(params.temperature !== null && { temperature: params.temperature }),
     ...(params.topP !== null && { topP: params.topP }),
     ...(params.maxOutputTokens !== null && {

@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { defineStore } from "pinia";
 import { computed, ref, watch } from "vue";
-import { getPreset, PRESETS } from "@/lib/providers/presets";
+import { getPreset, PRESETS, sessionHeaders } from "@/lib/providers/presets";
 import { discoverModels, explainNetworkError, resolveModel } from "@/lib/providers/resolve";
 import { loadProviders, saveProviders } from "@/lib/storage";
 import type { ModelRef, ProviderConfig } from "@/lib/types";
@@ -109,6 +109,7 @@ export const useProvidersStore = defineStore("providers", () => {
         model: resolveModel(provider, modelId),
         prompt: "Reply with the single word: ok",
         maxOutputTokens: 8,
+        headers: sessionHeaders(provider.presetId, provider.id),
       });
       return { ok: true, message: `Reached ${provider.label} using ${modelId}.` };
     } catch (error) {

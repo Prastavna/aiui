@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { buildModelMessages, deriveTitle, streamAssistant } from "@/lib/chat-engine";
 import * as db from "@/lib/db";
+import { sessionHeaders } from "@/lib/providers/presets";
 import { explainNetworkError } from "@/lib/providers/resolve";
 import type { Attachment, Chat, GenerationParams, Message, ModelRef } from "@/lib/types";
 import { uid } from "@/lib/utils";
@@ -155,6 +156,7 @@ export const useChatsStore = defineStore("chats", () => {
       }
 
       const model = providersStore.resolve(modelRef);
+      const provider = providersStore.byId(modelRef.providerId);
       const modelMessages = await buildModelMessages(
         messages.value.slice(0, -1),
         effectiveParams.value.systemPrompt,
@@ -166,6 +168,7 @@ export const useChatsStore = defineStore("chats", () => {
         messages: modelMessages,
         params: effectiveParams.value,
         signal: abortController.signal,
+        headers: provider ? sessionHeaders(provider.presetId, chat.id) : undefined,
         handlers: {
           onText: (delta) => {
             live.content += delta;

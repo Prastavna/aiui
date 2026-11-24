@@ -14,6 +14,11 @@ export interface ProviderPreset {
   /** False for local servers that accept any key, so the form stops nagging. */
   requiresKey: boolean;
   /**
+   * Header that carries a stable per-conversation id on every request. Used by
+   * gateways that route or cache by session (OpenCode Go requires one).
+   */
+  sessionHeader?: string;
+  /**
    * Whether the provider is known to send permissive CORS headers for
    * browser-origin requests. "unknown" providers still work if they allow it —
    * the settings screen just warns instead of promising.
@@ -57,6 +62,43 @@ export const PRESETS: ProviderPreset[] = [
     requiresKey: true,
     cors: "yes",
     suggestedModels: ["gemini-2.5-pro", "gemini-2.5-flash"],
+  },
+  {
+    id: "opencode",
+    label: "OpenCode Zen",
+    protocol: "openai-compatible",
+    baseUrl: "https://opencode.ai/inference/openai/v1",
+    apiKeyUrl: "https://opencode.ai/auth",
+    requiresKey: true,
+    cors: "no",
+    note: "OpenCode Zen is pay-as-you-go. Hosted OpenCode sends no CORS headers, so the browser cannot call it directly — point Base URL at a proxy that forwards to https://opencode.ai/inference/openai/v1 (a self-hosted OpenCode with this origin allowed works too). Every text model is translated to Chat Completions by the gateway.",
+    suggestedModels: [
+      "deepseek-v4.1-flash",
+      "glm-5.3",
+      "kimi-k2.7-code",
+      "minimax-m3",
+      "big-pickle",
+    ],
+  },
+  {
+    id: "opencode-go",
+    label: "OpenCode Go",
+    protocol: "openai-compatible",
+    baseUrl: "https://opencode.ai/inference/go/openai/v1",
+    apiKeyUrl: "https://opencode.ai/auth",
+    requiresKey: true,
+    cors: "no",
+    // Go returns 400 MissingSessionID without this; the app fills it with the
+    // chat's id so each conversation gets its own routing/cache key.
+    sessionHeader: "x-opencode-session",
+    note: "OpenCode Go is the subscription lane and uses a different base URL from Zen. It requires a per-conversation x-opencode-session header, which this app sends automatically. Like Zen, the hosted API sends no CORS headers, so use a proxy or a self-hosted OpenCode that allows this origin.",
+    suggestedModels: [
+      "deepseek-v4.1-flash",
+      "deepseek-v4-pro",
+      "glm-5.3",
+      "kimi-k2.7-code",
+      "mimo-v2.6-pro",
+    ],
   },
   {
     id: "openrouter",
@@ -215,4 +257,13 @@ export const PRESETS: ProviderPreset[] = [
 
 export function getPreset(id: string): ProviderPreset | undefined {
   return PRESETS.find((preset) => preset.id === id);
+}
+
+/**
+ * Headers that must accompany every generation request for the preset, with
+ * the given conversation id. Empty for presets that don't route by session.
+ */
+export function sessionHeaders(presetId: string, sessionId: string): Record<string, string> {
+  const header = getPreset(presetId)?.sessionHeader;
+  return header ? { [header]: sessionId } : {};
 }

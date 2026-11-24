@@ -3,6 +3,7 @@ import { buildModelMessages, deriveTitle } from "./chat-engine";
 import { initHighlighter, renderMarkdown } from "./markdown";
 import { describeNoModels } from "./providers/availability";
 import { duplicateHeaderNames, type HeaderRow, rowsToHeaders } from "./providers/headers";
+import { sessionHeaders } from "./providers/presets";
 import { explainNetworkError } from "./providers/resolve";
 import type { Message, ProviderConfig } from "./types";
 
@@ -231,6 +232,16 @@ describe("describeNoModels", () => {
         provider({ id: "b", label: "Two", apiKey: "" }),
       ]),
     ).toBe("One and Two still needs an API key.");
+  });
+});
+
+describe("sessionHeaders", () => {
+  it("gives OpenCode Go the chat id as its session", () => {
+    expect(sessionHeaders("opencode-go", "chat-1")).toEqual({ "x-opencode-session": "chat-1" });
+  });
+
+  it("adds nothing for presets that don't route by session", () => {
+    expect(sessionHeaders("openai", "chat-1")).toEqual({});
   });
 });
 
