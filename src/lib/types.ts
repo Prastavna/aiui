@@ -3,7 +3,7 @@
  * AI SDK factory builds the model, so adding a provider preset never means
  * touching the resolver.
  */
-export type Protocol = "openai" | "anthropic" | "google" | "openai-compatible";
+export type Protocol = "openai" | "anthropic" | "google" | "openai-compatible" | "opencode-server";
 
 export interface ProviderConfig {
   id: string;

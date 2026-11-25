@@ -39,6 +39,7 @@ function protocolLabel(preset: ProviderPreset) {
   if (preset.protocol === "openai-compatible") return "OpenAI-compatible";
   if (preset.protocol === "google") return "Google Gemini";
   if (preset.protocol === "anthropic") return "Anthropic";
+  if (preset.protocol === "opencode-server") return "Local server";
   return "OpenAI";
 }
 

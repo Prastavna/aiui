@@ -38,6 +38,7 @@ const PROTOCOL_OPTIONS: SelectOption<Protocol>[] = [
   { value: "anthropic", label: "Anthropic", hint: "native" },
   { value: "google", label: "Google Gemini", hint: "native" },
   { value: "openai-compatible", label: "OpenAI-compatible", hint: "generic" },
+  { value: "opencode-server", label: "OpenCode server", hint: "local" },
 ];
 
 const props = defineProps<{ provider: ProviderConfig }>();
@@ -91,6 +92,8 @@ const protocolLabel = computed(() => {
       return "Anthropic";
     case "google":
       return "Google Gemini";
+    case "opencode-server":
+      return "OpenCode server";
     default:
       return "OpenAI-compatible";
   }

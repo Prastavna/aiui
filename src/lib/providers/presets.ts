@@ -64,6 +64,22 @@ export const PRESETS: ProviderPreset[] = [
     suggestedModels: ["gemini-2.5-pro", "gemini-2.5-flash"],
   },
   {
+    id: "opencode-local",
+    label: "OpenCode server (local)",
+    protocol: "opencode-server",
+    baseUrl: "http://127.0.0.1:49374",
+    requiresKey: true,
+    cors: "yes",
+    note: "Talks to the OpenCode server on this machine; opencode service status prints its URL. The key is the server password from opencode service get password. Localhost origins are allowed automatically — for any other origin, run opencode service set cors <origin> and restart the service. This endpoint accepts text only, ignores temperature, top-p and max-token settings, and returns each reply in one piece rather than streaming.",
+    suggestedModels: [
+      "opencode-go/glm-5.3",
+      "opencode-go/deepseek-v4.1-flash",
+      "opencode-go/kimi-k2.7-code",
+      "opencode-go/mimo-v2.6-pro",
+      "opencode-go/minimax-m3",
+    ],
+  },
+  {
     id: "opencode",
     label: "OpenCode Zen",
     protocol: "openai-compatible",

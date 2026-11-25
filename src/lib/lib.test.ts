@@ -1,10 +1,16 @@
+import { generateText, streamText } from "ai";
 import { describe, expect, it } from "vite-plus/test";
 import { buildModelMessages, deriveTitle } from "./chat-engine";
 import { initHighlighter, renderMarkdown } from "./markdown";
 import { describeNoModels } from "./providers/availability";
 import { duplicateHeaderNames, type HeaderRow, rowsToHeaders } from "./providers/headers";
 import { sessionHeaders } from "./providers/presets";
-import { explainNetworkError } from "./providers/resolve";
+import {
+  discoverModels,
+  explainNetworkError,
+  parseOpenCodeModelId,
+  resolveModel,
+} from "./providers/resolve";
 import type { Message, ProviderConfig } from "./types";
 
 function rows(...pairs: [string, string][]): HeaderRow[] {
@@ -169,6 +175,7 @@ describe("explainNetworkError", () => {
       "http://localhost:11434/v1",
     );
     expect(message).toContain("OLLAMA_ORIGINS");
+    expect(message).toContain("opencode service set cors");
     expect(message).not.toContain("CORS");
   });
 
@@ -242,6 +249,118 @@ describe("sessionHeaders", () => {
 
   it("adds nothing for presets that don't route by session", () => {
     expect(sessionHeaders("openai", "chat-1")).toEqual({});
+  });
+});
+
+describe("OpenCode server provider", () => {
+  const config: ProviderConfig = {
+    id: "p-local",
+    presetId: "opencode-local",
+    label: "OpenCode server (local)",
+    protocol: "opencode-server",
+    baseUrl: "http://127.0.0.1:49374",
+    apiKey: "secret",
+    headers: {},
+    enabled: true,
+    cachedModels: [],
+    cachedModelsAt: null,
+    createdAt: 0,
+  };
+
+  function requestUrl(input: Parameters<typeof fetch>[0]): string {
+    if (typeof input === "string") return input;
+    if (input instanceof URL) return input.href;
+    return input.url;
+  }
+
+  function stubFetch(handler: (url: string, init: RequestInit | undefined) => Response) {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (
+      input: Parameters<typeof fetch>[0],
+      init?: Parameters<typeof fetch>[1],
+    ) => handler(requestUrl(input), init)) as typeof fetch;
+    return () => {
+      globalThis.fetch = original;
+    };
+  }
+
+  it("splits a namespaced model id", () => {
+    expect(parseOpenCodeModelId("opencode-go/glm-5.3")).toEqual({
+      providerID: "opencode-go",
+      id: "glm-5.3",
+    });
+  });
+
+  it("rejects an id with no provider prefix", () => {
+    expect(() => parseOpenCodeModelId("glm-5.3")).toThrow(/provider prefix/);
+  });
+
+  it("discovers chat models with their provider prefix", async () => {
+    const restore = stubFetch(
+      () =>
+        new Response(
+          JSON.stringify({
+            data: [
+              { providerID: "opencode-go", modelID: "glm-5.3", type: "chat", enabled: true },
+              { providerID: "opencode", modelID: "zeta", type: "chat", enabled: true },
+              { providerID: "opencode-go", modelID: "embed", type: "embedding", enabled: true },
+              { providerID: "opencode-go", modelID: "off", type: "chat", enabled: false },
+            ],
+          }),
+          { status: 200 },
+        ),
+    );
+    try {
+      expect(await discoverModels(config)).toEqual(["opencode-go/glm-5.3", "opencode/zeta"]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("builds the local request with Basic auth and the model ref", async () => {
+    let seen: { url: string; body: unknown; auth: string | null } | undefined;
+    const restore = stubFetch((url, init) => {
+      seen = {
+        url,
+        body: JSON.parse(typeof init?.body === "string" ? init.body : ""),
+        auth: new Headers(init?.headers).get("authorization"),
+      };
+      return new Response(JSON.stringify({ data: { text: "ok" } }), { status: 200 });
+    });
+    try {
+      const result = await generateText({
+        model: resolveModel(config, "opencode-go/glm-5.3"),
+        prompt: "Reply with ok",
+      });
+      expect(result.text).toBe("ok");
+      expect(seen).toEqual({
+        url: "http://127.0.0.1:49374/api/experimental/generate/text",
+        body: {
+          prompt: "User: Reply with ok",
+          model: { providerID: "opencode-go", id: "glm-5.3" },
+        },
+        auth: `Basic ${btoa("opencode:secret")}`,
+      });
+    } finally {
+      restore();
+    }
+  });
+
+  it("streams the whole answer as one delta", async () => {
+    const restore = stubFetch(
+      () => new Response(JSON.stringify({ data: { text: "whole answer" } }), { status: 200 }),
+    );
+    try {
+      const result = streamText({
+        model: resolveModel(config, "opencode-go/glm-5.3"),
+        prompt: "Reply with ok",
+      });
+      let text = "";
+      for await (const delta of result.textStream) text += delta;
+      expect(text).toBe("whole answer");
+    } finally {
+      restore();
+    }
   });
 });
 

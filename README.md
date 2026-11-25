@@ -19,7 +19,7 @@ any static host or opened directly.
 
 ## Providers
 
-Every provider funnels through one of four wire protocols, chosen per provider
+Every provider funnels through one of five wire protocols, chosen per provider
 in settings:
 
 | Protocol            | Built on                    | Covers                                     |
@@ -28,15 +28,16 @@ in settings:
 | `anthropic`         | `@ai-sdk/anthropic`         | Anthropic                                  |
 | `google`            | `@ai-sdk/google`            | Google Gemini                              |
 | `openai-compatible` | `@ai-sdk/openai-compatible` | everything else with a `/chat/completions` |
+| `opencode-server`   | local OpenCode HttpApi      | the OpenCode server on this machine        |
 
-Presets ship for OpenAI, Anthropic, Google, OpenCode Zen, OpenCode Go,
-OpenRouter, Groq, DeepSeek, Mistral, xAI, Together, Fireworks, Cerebras,
-Perplexity, Nebius, Hyperbolic, Novita, Ollama, LM Studio, llama.cpp, and vLLM.
-Anything not listed works through **Custom (OpenAI-compatible)** by pasting a
-base URL.
+Presets ship for OpenAI, Anthropic, Google, OpenCode server (local), OpenCode
+Zen, OpenCode Go, OpenRouter, Groq, DeepSeek, Mistral, xAI, Together, Fireworks,
+Cerebras, Perplexity, Nebius, Hyperbolic, Novita, Ollama, LM Studio, llama.cpp,
+and vLLM. Anything not listed works through **Custom (OpenAI-compatible)** by
+pasting a base URL.
 
-Adding a preset means one entry in `src/lib/providers/presets.ts` — the resolver
-in `resolve.ts` never changes, because it dispatches purely on protocol.
+Adding a preset for an existing protocol means one entry in
+`src/lib/providers/presets.ts`. A new protocol also needs a branch in `resolve.ts`.
 
 ## CORS is the real constraint
 
@@ -51,13 +52,29 @@ blocks the request before it leaves the page.
   `OLLAMA_ORIGINS="*"` for Ollama, or `--allowed-origins` for vLLM.
 - **Some providers block browser origins entirely.** They cannot be used without
   a proxy, and no client-side change will fix it. OpenCode Zen and OpenCode Go
-  are both in this group: their hosted APIs answer CORS preflights with a 404,
-  so point the provider's base URL at a proxy (or at a self-hosted OpenCode
-  configured to allow this origin).
+  are both in this group: their hosted APIs answer CORS preflights with a 404.
+  Use the **OpenCode server (local)** preset instead if OpenCode runs on the
+  same machine.
 
 Each provider has a **Test** button in settings that performs a real one-token
 request, so you find out which category a provider falls into before you start a
 conversation rather than mid-message.
+
+## OpenCode through the local server
+
+If OpenCode is running on your machine, the **OpenCode server (local)** preset
+keeps the app browser-only: the page calls `http://127.0.0.1:49374`, and
+OpenCode makes the upstream request with your OpenCode Go or Zen credentials.
+
+1. Get the server address with `opencode service status`.
+2. Use the password from `opencode service get password` as the provider key.
+3. Localhost origins are allowed automatically. For a deployed origin, run
+   `opencode service set cors https://your-origin` and restart the service.
+
+Models are namespaced as `providerID/modelID` (for example
+`opencode-go/glm-5.3`), so one provider covers every model the local server has
+configured. The local generate endpoint returns the whole reply at once, so
+this provider does not stream token by token, and it accepts text only.
 
 ## About API key storage
 
